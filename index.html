@@ -327,7 +327,7 @@ const BAB_END=(()=>{const m=new Map();VERSES.forEach(v=>m.set(v.bab,v.n));return
 
 /* ============ STATE ============ */
 const KEY='murtaqa_v1';
-function defaultState(){return{v:1,settings:{startVerse:106,startDate:'2026-10-18',per:5,url:'',token:'',theme:'auto',student:'A718',fStu:'',fVerse:'',fAuto:true},done:[],cur:null,ptr:1,weak:[],extra:{},formLog:{},updatedAt:0}}
+function defaultState(){return{v:1,settings:{startVerse:106,startDate:'2026-10-18',per:5,url:'',token:'',theme:'auto',student:'A718',fStu:'663087963',fVerse:'1408373261',fAuto:true},done:[],cur:null,ptr:1,weak:[],extra:{},formLog:{},updatedAt:0}}
 let S;
 function load(){try{const r=localStorage.getItem(KEY);if(r){S=Object.assign(defaultState(),JSON.parse(r));return}}catch(e){}S=defaultState()}
 function save(skipSync){S.updatedAt=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}if(!skipSync)queuePush()}
@@ -383,7 +383,7 @@ const canVib=!!(navigator.vibrate);
 function vibrate(p){if(!VIB||!canVib)return;try{navigator.vibrate(p)}catch(e){}}
 
 /* ============ RENDER ============ */
-function render(){const today=todayRiyadh();ensureCur();
+function render(){const today=todayRiyadh();if(S.settings&&!S.settings.fStu){S.settings.fStu='663087963';S.settings.fVerse='1408373261';if(!S.settings.student)S.settings.student='A718';if(S.settings.fAuto==null)S.settings.fAuto=true}ensureCur();
   $('#dates').textContent=`${DAYN[dow(today)]}، ${hijri(today)}، ${greg(today)}`;
   renderHero(today);renderWeek(today);renderTasks(today);renderProgress(today);renderTopbar(today);fillMeters(document);
   if($('#v-stats').classList.contains('on'))renderStats(today);
