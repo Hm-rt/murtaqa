@@ -203,6 +203,19 @@ details.how{margin-top:12px;background:var(--s);border-radius:12px;padding:10px 
 details.how summary{font-weight:700;cursor:pointer}
 details.how ol{margin:8px 0 0;padding-right:20px;padding-left:0}
 details.how li{margin:4px 0}
+
+.tmrbox{display:flex;align-items:center;background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:8px 10px;margin-bottom:10px}
+.tmrbox.run{border-color:var(--primary)}
+.tmrbox .tmicon{font-size:18px;margin-left:8px}
+.tmrbox .tmr{direction:ltr;unicode-bidi:embed;display:inline-block;font-size:24px;font-weight:900;letter-spacing:.02em;margin-left:10px;font-variant-numeric:tabular-nums}
+.tmrbox .tmst{font-size:12px;font-weight:700;color:var(--m);flex:1}
+.tmrbox.run .tmst{color:var(--primary-ink)}
+.tmrbox .tmbtn{background:var(--foreground);color:var(--primary);font-weight:900;font-size:14px;padding:8px 12px;border-radius:10px;white-space:nowrap}
+.tmrbox.big{padding:12px 14px}.tmrbox.big .tmr{font-size:34px}
+.screen .head .tmrslot .tmrbox{margin:0;padding:4px 6px;border:0;background:none}
+.screen .head .tmrslot .tmicon,.screen .head .tmrslot .tmst{display:none}
+.screen .head .tmrslot .tmr{font-size:18px;margin-left:6px}
+.screen .head .tmrslot .tmbtn{font-size:12px;padding:7px 9px;width:auto;height:auto}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -276,7 +289,7 @@ details.how li{margin:4px 0}
 </nav>
 
 <div class="screen" id="scrMem">
-  <div class="head"><button data-close aria-label="رجوع">→</button><h2 id="memTitle">الحفظ الجديد</h2></div>
+  <div class="head"><button data-close aria-label="رجوع">→</button><h2 id="memTitle">الحفظ الجديد</h2><div class="tmrslot"></div></div>
   <div class="scroll"><div class="meta" style="margin-bottom:8px">افتح الأبيات من نسختك. اضغط على رقم بيت لتعليمه «ضعيفًا».</div><div id="memVerses"></div></div>
   <div class="foot">
     <div class="count"><span class="n" id="cntN"></span><span><b id="phaseTxt"></b><br><span class="meta" id="totTxt"></span></span></div>
@@ -287,7 +300,7 @@ details.how li{margin:4px 0}
 </div>
 
 <div class="screen" id="scrRev">
-  <div class="head"><button data-close aria-label="رجوع">→</button><h2 id="revTitle">مراجعة</h2></div>
+  <div class="head"><button data-close aria-label="رجوع">→</button><h2 id="revTitle">مراجعة</h2><div class="tmrslot"></div></div>
   <div class="scroll"><div class="meta" style="margin-bottom:8px">راجع الأبيات من نسختك حسب الصفحات. اضغط على رقم بيت لتعليمه «ضعيفًا».</div><div id="revVerses"></div></div>
   <div class="foot"><button class="btn block" id="revDone">أتممت المراجعة ✓</button></div>
 </div>
@@ -372,12 +385,26 @@ function newlyCrossed(before,after){const r=[];for(const [b,end] of BAB_END)if(e
 function ensureCur(){const p=plan(S,todayRiyadh());if(!p.lesson){S.cur=null;return null}
   if(!S.cur||S.cur.k!==p.lesson.k)S.cur={k:p.lesson.k,phase:0,count:0,mem:false,rev5:false,rev50:false,started:false,r50:null};
   if(!S.cur.r50&&!S.cur.rev50)S.cur.r50=rev50Range(S);return S.cur}
+/* ============ عدّاد الوقت ============ */
+function tmMs(c){c=c||S.cur;if(!c||!c.timer)return 0;return c.timer.acc+(c.timer.run?Math.max(0,Date.now()-c.timer.run):0)}
+function tmRunning(){return !!(S.cur&&S.cur.timer&&S.cur.timer.run)}
+function tmStart(){const c=S.cur;if(!c)return;if(!c.timer)c.timer={acc:0,run:null};if(!c.timer.run){c.timer.run=Date.now();save()}tmPaint()}
+function tmPause(){const c=S.cur;if(!c||!c.timer||!c.timer.run)return;c.timer.acc+=Math.max(0,Date.now()-c.timer.run);c.timer.run=null;save();tmPaint()}
+function tmToggle(){tmRunning()?(tmPause(),toast('أُوقف العدّاد مؤقتًا')):(tmStart(),toast('استُؤنف العدّاد'))}
+function fmtDur(ms){const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;const p=n=>String(n).padStart(2,'0');return ar((h?h+':':'')+p(m)+':'+p(x))}
+function durWords(ms){const m=Math.round(ms/60000);if(m<1)return'أقل من دقيقة';const h=Math.floor(m/60),r=m%60;return (h?ar(h)+' ساعة'+(r?' و':''):'')+(r?ar(r)+' دقيقة':'')}
+function tmHTML(big){const has=S.cur&&S.cur.timer;const run=tmRunning();
+  return `<div class="tmrbox ${big?'big':''} ${run?'run':''}"><span class="tmicon" aria-hidden="true">⏱</span><span class="tmr" aria-live="off">${fmtDur(tmMs())}</span><span class="tmst">${run?'يعمل':(has?'متوقف مؤقتًا':'لم يبدأ')}</span><button class="tmbtn" type="button">${run?'⏸ إيقاف مؤقت':(has?'▶ استئناف':'▶ ابدأ')}</button></div>`}
+function tmPaint(){document.querySelectorAll('.tmrbox').forEach(el=>{const has=S.cur&&S.cur.timer,run=tmRunning();el.classList.toggle('run',run);
+  el.querySelector('.tmr').textContent=fmtDur(tmMs());el.querySelector('.tmst').textContent=run?'يعمل':(has?'متوقف مؤقتًا':'لم يبدأ');
+  el.querySelector('.tmbtn').textContent=run?'⏸ إيقاف مؤقت':(has?'▶ استئناف':'▶ ابدأ');el.querySelector('.tmbtn').onclick=tmToggle})}
+setInterval(()=>{if(tmRunning())document.querySelectorAll('.tmr').forEach(e=>e.textContent=fmtDur(tmMs()))},1000);
 function completeIfReady(){const c=S.cur;if(!c||!(c.mem&&c.rev5&&c.rev50))return;
   const today=todayRiyadh();const before=memEnd(S);const r=lessonRange(S,c.k);
-  S.done.push({k:c.k,from:r.from,to:r.to,date:today,bab:V(r.from).bab});
+  const dur=tmMs(c);S.done.push({k:c.k,from:r.from,to:r.to,date:today,bab:V(r.from).bab,dur:dur||undefined});
   const rr=c.r50;if(rr){S.ptr=rr.to>=before?1:rr.to+1}
   S.cur=null;save();const cross=newlyCrossed(before,memEnd(S));vibrate([200,100,200,100,400]);
-  if(cross.length)celebrate(cross);else toast('أتممت الورد — بارك الله فيك ✓');render()}
+  if(cross.length)celebrate(cross);else toast(dur?`أتممت الورد في ${durWords(dur)} — بارك الله فيك ✓`:'أتممت الورد — بارك الله فيك ✓',3200);render()}
 let VIB=(function(){try{return localStorage.getItem('murtaqa_vib')!=='0'}catch(e){return true}})();
 const canVib=!!(navigator.vibrate);
 function vibrate(p){if(!VIB||!canVib)return;try{navigator.vibrate(p)}catch(e){}}
@@ -422,7 +449,7 @@ function renderTasks(today){const p=plan(S,today);const c=S.cur;let h='',lbl='ا
   if(active&&p.lesson){const L=p.lesson,r5=rev5Range(S,L.k),r50=c.r50;const ph=phases(L.to-L.from+1);
     const done=ph.slice(0,c.phase).reduce((a,x)=>a+x.target,0)+c.count,tot=ph.reduce((a,x)=>a+x.target,0);
     lbl=`الورد ${ar(L.k+1)} من ${ar(p.tot)}`;
-    h=`<div class="field steps">`+
+    h=tmHTML(true)+`<div class="field steps">`+
       stepBtn('mem',1,'الحفظ الجديد',`الأبيات ${ar(L.from)}–${ar(L.to)}، ${pages(L.from,L.to)}`,c.mem?'done':(done?'run':''),c.mem?'تم':(done?`${ar(done)} من ${ar(tot)}`:`${ar(tot)} تكرارًا`))+
       stepBtn('rev5',2,'مراجعة الأوراد الخمسة السابقة',r5?`الأبيات ${ar(r5.from)}–${ar(r5.to)}، ${pages(r5.from,r5.to)}`:'لا شيء قبلها',c.rev5?'done':'',c.rev5?'تم':`${r5?ar(r5.to-r5.from+1):'٠'} بيتًا`)+
       stepBtn('rev50',3,'مراجعة دورية من أول المحفوظ',r50?`الأبيات ${ar(r50.from)}–${ar(r50.to)}، ${pages(r50.from,r50.to)}`:'—',c.rev50?'done':'',c.rev50?'تم':`${r50?ar(r50.to-r50.from+1):'٠'} بيتًا`)+`</div>`;
@@ -434,7 +461,7 @@ function renderTasks(today){const p=plan(S,today);const c=S.cur;let h='',lbl='ا
     if(rows)h+=`<div class="field steps">${rows}</div>`;
     h+=`<button class="btn ghost block" id="startEarly" style="margin-top:${rows?'12px':'0'}">ابدأ الورد التالي مبكرًا (${ar(p.lesson.from)}–${ar(p.lesson.to)})</button>`;
   } else h='<p class="meta">لا مهام.</p>';
-  $('#tasks').innerHTML=h;$('#tasksLbl').textContent=lbl;
+  $('#tasks').innerHTML=h;tmPaint();$('#tasksLbl').textContent=lbl;
   const se=$('#startEarly');if(se)se.onclick=()=>{ensureCur();S.cur.started=true;save();render()};
   document.querySelectorAll('[data-task]').forEach(b=>b.onclick=()=>openTask(b.dataset.task))}
 function renderProgress(today){const m=memEnd(S);$('#pctBig').textContent=ar(Math.round(m/TOTAL*100))+'٪';
@@ -457,15 +484,15 @@ function bindWeak(root,rerender){root.querySelectorAll('[data-weak]').forEach(b=
 /* ============ MEMORIZE ============ */
 let wakeLock=null;
 function openTask(id){if(id==='mem')openMem();
-  else if(id==='rev5'){const r=rev5Range(S,S.cur.k);if(r)openRev('مراجعة الخمسة السابقة',r,()=>{S.cur.rev5=true;S.cur.started=true;save();completeIfReady()});else{S.cur.rev5=true;save();completeIfReady();render()}}
-  else if(id==='rev50'){const r=S.cur.r50;if(r)openRev('المراجعة الدورية',r,()=>{S.cur.rev50=true;S.cur.started=true;save();completeIfReady()});else{S.cur.rev50=true;save();completeIfReady();render()}}
+  else if(id==='rev5'){tmStart();const r=rev5Range(S,S.cur.k);if(r)openRev('مراجعة الخمسة السابقة',r,()=>{S.cur.rev5=true;S.cur.started=true;save();completeIfReady()});else{S.cur.rev5=true;save();completeIfReady();render()}}
+  else if(id==='rev50'){tmStart();const r=S.cur.r50;if(r)openRev('المراجعة الدورية',r,()=>{S.cur.rev50=true;S.cur.started=true;save();completeIfReady()});else{S.cur.rev50=true;save();completeIfReady();render()}}
   else if(id==='xwk'){const today=todayRiyadh(),sun=addDays(today,-dow(today));const wk=S.done.filter(x=>x.date>=sun&&x.date<=today);
     openRev('مراجعة أوراد الأسبوع',{from:wk[0].from,to:wk[wk.length-1].to},()=>{S.extra[today]=Object.assign(S.extra[today]||{},{wk:true});save();render()})}
   else if(id==='x50'){const today=todayRiyadh();const r=(S.extra[today]&&S.extra[today].r50)||rev50Range(S);
     openRev('المراجعة الدورية',r,()=>{const before=memEnd(S);S.extra[today]=Object.assign(S.extra[today]||{},{r50:r});S.ptr=r.to>=before?1:r.to+1;if(S.cur&&!S.cur.rev50)S.cur.r50=rev50Range(S);save();render()})}}
-function openMem(){S.cur.started=true;save();$('#scrMem').classList.add('on');renderMem();$('#tapBtn').focus();
+function openMem(){S.cur.started=true;tmStart();save();$('#scrMem').classList.add('on');renderMem();$('#tapBtn').focus();
   try{navigator.wakeLock&&navigator.wakeLock.request('screen').then(l=>wakeLock=l).catch(()=>{})}catch(e){}}
-function renderMem(){const c=S.cur;const L=lessonRange(S,c.k);const n=L.to-L.from+1;const ph=phases(n);const P=ph[Math.min(c.phase,ph.length-1)];
+function renderMem(){const c=S.cur;$('#scrMem .tmrslot').innerHTML=tmHTML(false);tmPaint();const L=lessonRange(S,c.k);const n=L.to-L.from+1;const ph=phases(n);const P=ph[Math.min(c.phase,ph.length-1)];
   $('#memTitle').textContent=`حفظ ${ar(L.from)}–${ar(L.to)}`;
   $('#memVerses').innerHTML=matrixHTML(L.from,L.to,{big:true,cls:x=>{if(c.mem)return'past';const i=x-L.from;if(P.all)return'cur';return i===P.single?'cur':(i<P.single?'past':'')}});
   bindWeak($('#memVerses'),renderMem);
@@ -499,7 +526,7 @@ $('#resetPhase').onclick=()=>{if(S.cur&&!S.cur.mem&&confirm('إعادة عدّا
 /* ============ REVIEW ============ */
 let revCb=null,revRange=null;
 function openRev(title,r,cb){revCb=cb;revRange=r;$('#revTitle').textContent=`${title}: ${ar(r.from)}–${ar(r.to)}`;$('#scrRev').classList.add('on');renderRev()}
-function renderRev(){$('#revVerses').innerHTML=matrixHTML(revRange.from,revRange.to,{});bindWeak($('#revVerses'),renderRev)}
+function renderRev(){$('#scrRev .tmrslot').innerHTML=(S.cur&&S.cur.timer&&revCb&&!$('#revTitle').textContent.startsWith('مراجعة أوراد الأسبوع')&&!$('#revTitle').textContent.startsWith('المراجعة الدورية (')?tmHTML(false):'');tmPaint();$('#revVerses').innerHTML=matrixHTML(revRange.from,revRange.to,{});bindWeak($('#revVerses'),renderRev)}
 $('#revDone').onclick=()=>{closeScreens();const cb=revCb;revCb=null;cb&&cb();render()};
 function closeScreens(){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));try{wakeLock&&wakeLock.release();wakeLock=null}catch(e){}render()}
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeScreens);
@@ -510,6 +537,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){if($('#modal').clas
 function renderStats(today){const s=streaks(S,today),m=memEnd(S),p=plan(S,today);const daysDone=new Set(S.done.map(x=>x.date)).size;
   $('#statHead').textContent=`${ar(m)}/${ar(TOTAL)}`;
   const tiles=[[ar(m),'بيتًا محفوظًا'],[ar(S.done.length),'وردًا ضمن الخطة'],[ar(s.cur),'السلسلة الحالية'],[ar(s.best),'أطول سلسلة'],[ar(daysDone),'يومًا فيه إنجاز'],[ar(p.tot-p.done),'وردًا متبقيًا']];
+  const durs=S.done.filter(x=>x.dur).map(x=>x.dur);if(durs.length){tiles.push([fmtDur(durs.reduce((a,b)=>a+b,0)/durs.length),'متوسط مدة الورد']);tiles.push([fmtDur(durs[durs.length-1]),'مدة آخر ورد'])}
   $('#statsGrid').innerHTML=tiles.map(t=>`<div><b>${t[0]}</b><span class="meta">${t[1]}</span></div>`).join('');
   const w=weekAdherence(S,today,8);
   $('#chart').innerHTML=w.map(x=>`<div class="meter"><div class="tk ${x.pct==null?'na':''}" role="img" aria-label="أسبوع ${ar(parseD(x.s).getUTCDate())}/${ar(parseD(x.s).getUTCMonth()+1)}: ${x.pct==null?'خارج الخطة':ar(Math.round(x.pct*100))+'٪'}">${x.pct==null?'':`<i data-h="${Math.round(x.pct*100)}"></i>`}</div><b>${x.pct==null?'—':ar(Math.round(x.pct*100))+'٪'}</b><span>${ar(parseD(x.s).getUTCDate())}/${ar(parseD(x.s).getUTCMonth()+1)}</span></div>`).join('');fillMeters($('#chart'));
@@ -576,7 +604,7 @@ function onMemorized(L){const s=S.settings;S.formLog=S.formLog||{};if(S.formLog[
   if(!s.fAuto)return;
   if(formReady()){
     if(!navigator.onLine){S.formLog[L.to]={pending:true};save();toast('سيُسجَّل الإنجاز في النموذج عند عودة الاتصال',2600);return}
-    sendForm(L.to).then(()=>{S.formLog[L.to]={at:Date.now()};save();toast(`سُجّل في النموذج ✓ — ${s.student}، آخر بيت ${ar(L.to)}`,3000)})
+    sendForm(L.to).then(()=>{S.formLog[L.to]={at:Date.now()};save();setTimeout(()=>toast(`سُجّل في النموذج ✓ — ${s.student}، آخر بيت ${ar(L.to)}`,3000),3400)})
       .catch(()=>{S.formLog[L.to]={pending:true};save();toast('تعذّر التسجيل الآن، سيُعاد تلقائيًّا',2600)})}
   else{S.formLog[L.to]={manual:true};save();showFormCard(L.to)}}
 function retryForms(){if(!formReady()||!navigator.onLine||!S.formLog)return;Object.keys(S.formLog).forEach(k=>{const r=S.formLog[k];if(r&&r.pending){sendForm(+k).then(()=>{S.formLog[k]={at:Date.now()};save()}).catch(()=>{})}})}
@@ -686,6 +714,7 @@ function runTests(){const res=[];const ok=(name,cond,info)=>res.push({name,pass:
   s=mk({settings:{startVerse:106,startDate:'2026-10-25',per:5,url:'',token:'',theme:'auto'}});ok('قبل تاريخ البدء',plan(s,'2026-10-20').mode==='before');
   ok('٨٥٠ بيتًا بأرقام وصفحات وأبواب، بلا نص',TOTAL===850&&VERSES.every((v,i)=>v.n===i+1&&v.page&&v.bab&&!('s1' in v)));
   ok('النسخة المعتمدة: ١٠٧ في ص ١١ (ملف ١٢)، ٣٠٩ في ص ١٣٩ (ملف ٢٩)، ٨٥٠ في ص ١٨٨',V(107).page===11&&V(107).pdf===12&&V(309).page===139&&V(309).pdf===29&&V(850).page===188&&V(850).pdf===78);
+  {const c={timer:{acc:60000,run:null}};ok('العدّاد: دقيقة متوقفة = ٠١:٠٠',fmtDur(tmMs(c))==='٠١:٠٠');c.timer.run=Date.now()-30000;ok('العدّاد يعمل: يضيف الوقت الجاري',Math.abs(tmMs(c)-90000)<1500);ok('صياغة المدة',durWords(83*60000)==='١ ساعة و٢٣ دقيقة')}
   console.table(res);const f=res.filter(x=>!x.pass);console.log(f.length?`❌ فشل ${f.length} من ${res.length}`:`✅ نجحت كل الاختبارات (${res.length})`);return{total:res.length,failed:f}}
 window.runTests=runTests;
 
